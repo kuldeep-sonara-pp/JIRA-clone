@@ -17,15 +17,21 @@ const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("./util/database"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
+const user_model_1 = __importDefault(require("./model/user.model"));
+const rols_model_1 = __importDefault(require("./model/rols.model"));
 // Load environment variables from .env file
 dotenv_1.default.config();
 const app = (0, express_1.default)();
+app.use(express_1.default.json());
 const PORT = process.env.PORT; // Default to 3000 if PORT is not set
+app.use((0, cookie_parser_1.default)());
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
 app.use(user_routes_1.default);
 const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        user_model_1.default.belongsTo(rols_model_1.default, { foreignKey: 'roleId', as: 'role' });
+        rols_model_1.default.hasMany(user_model_1.default, { foreignKey: 'roleId', as: 'users' });
         yield database_1.default.authenticate();
         // const password = "Kuldeep200#";
         // const hasw = bcrypt.hashSync(password,10);
@@ -33,13 +39,13 @@ const startServer = () => __awaiter(void 0, void 0, void 0, function* () {
         // const compare = bcrypt.compare(password,hasw).then((result) => {
         //     console.log("result :",result);
         // });
-        yield database_1.default.sync({ force: true })
-            .then(() => {
-            console.log("Database synced successfully.");
-        })
-            .catch((syncError) => {
-            console.error("Error syncing database:", syncError);
-        });
+        // await sequelize.sync({force:true})
+        // .then(() => {
+        //     console.log("Database synced successfully.");
+        // })
+        // .catch((syncError) => {
+        //     console.error("Error syncing database:", syncError);
+        // });
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });

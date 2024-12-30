@@ -1,16 +1,16 @@
 import { Model, DataTypes, Sequelize } from "sequelize";
 import sequelize from '../util/database'; 
 
-class Rols extends Model {
-    public id!: string; // UUID
-    public roleName!: string; // VARCHAR(50)
+class Roles extends Model {
+    public id!: number; 
+    public roleName!: string; 
 }
 
-Rols.init(
+Roles.init(
     {
         id: {
-            type: DataTypes.UUID,
-            defaultValue: DataTypes.UUIDV4,
+            type: DataTypes.NUMBER,
+            autoIncrement: true,
             primaryKey: true,
         },
         roleName: {
@@ -29,4 +29,4 @@ Rols.init(
     }
 );
 
-export default Rols;
+export default Roles;

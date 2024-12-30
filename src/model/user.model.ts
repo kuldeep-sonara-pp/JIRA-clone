@@ -1,13 +1,16 @@
 import { Model, DataTypes } from 'sequelize';
 import sequelize from '../util/database'; // Adjust the path as necessary
+import Roles from './rols.model';
 
 class User extends Model {
     public id!: number; // Auto-incrementing integer
     public name!: string; // VARCHAR(255)
     public email!: string; // VARCHAR(255)
     public password!: string; // VARCHAR(255)
-    public roleId!: number | null; // Auto-incrementing integer (Nullable)
-    public teamId!: number | null; // Auto-incrementing integer (Nullable)
+    public roleId!: number | null;
+    public teamId!: number | null;
+
+    public role?: Roles;
 }
 
 User.init(
@@ -15,7 +18,7 @@ User.init(
         id: {
             type: DataTypes.INTEGER, // Change to INTEGER
             autoIncrement: true, // Enable auto-increment
-            primaryKey: true, // Set as primary key
+            primaryKey: true, 
         },
         name: {
             type: DataTypes.STRING(255),

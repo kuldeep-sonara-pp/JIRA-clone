@@ -5,12 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const database_1 = __importDefault(require("../util/database"));
-class Rols extends sequelize_1.Model {
+class Roles extends sequelize_1.Model {
 }
-Rols.init({
+Roles.init({
     id: {
-        type: sequelize_1.DataTypes.UUID,
-        defaultValue: sequelize_1.DataTypes.UUIDV4,
+        type: sequelize_1.DataTypes.NUMBER,
+        autoIncrement: true,
         primaryKey: true,
     },
     roleName: {
@@ -26,4 +26,4 @@ Rols.init({
     createdAt: true,
     updatedAt: true
 });
-exports.default = Rols;
+exports.default = Roles;
