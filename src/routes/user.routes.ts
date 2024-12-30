@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createUser, getAllUsers, getUser, login, logout, updateUser } from "../controller/user.controller";
+import { createUser, deleteUser, getAllUsers, getUser, login, logout, updateUser } from "../controller/user.controller";
 import checkToken from "../util/auth.middleware";
 
 const router = Router();
@@ -17,9 +17,7 @@ router.get("/user/getAllUsers", checkToken, getAllUsers);
 // @ts-ignore
 router.put("/user/update/:userId",checkToken, updateUser);
 // @ts-ignore
-router.delete("/user/delete/:userId", checkToken, (req, res) => {
-    res.send("User deleted");
-});
+router.delete("/user/delete/:userId", checkToken, deleteUser);
 
 const userRouts = router;
 export default userRouts;

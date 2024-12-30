@@ -165,7 +165,10 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (decodedToken.roleName !== 'admin') {
             return res.status(403).json({ message: 'Forbidden: You do not have permission to update a user.' });
         }
-        const userId = req.params.userId;
+        const userId = parseInt(req.params.userId, 10); // Ensure userId is an integer
+        if (isNaN(userId)) {
+            return res.status(400).json({ message: 'Invalid user ID' });
+        }
         console.log("userId", userId);
         const { name, email, roleId, teamId } = req.body;
         const user = yield user_model_1.default.findByPk(userId);

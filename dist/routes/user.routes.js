@@ -21,8 +21,6 @@ router.get("/user/getAllUsers", auth_middleware_1.default, user_controller_1.get
 // @ts-ignore
 router.put("/user/update/:userId", auth_middleware_1.default, user_controller_1.updateUser);
 // @ts-ignore
-router.delete("/user/delete/:userId", auth_middleware_1.default, (req, res) => {
-    res.send("User deleted");
-});
+router.delete("/user/delete/:userId", auth_middleware_1.default, user_controller_1.deleteUser);
 const userRouts = router;
 exports.default = userRouts;
