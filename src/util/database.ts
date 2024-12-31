@@ -1,5 +1,6 @@
-import { Sequelize } from "sequelize";
+import { Model, Sequelize, ModelStatic,WhereOptions } from "sequelize";
 import dotenv from "dotenv";
+
 
 dotenv.config();
 
@@ -25,5 +26,11 @@ const testConnection = async () => {
 };
 
 testConnection();
+
+
+export const recordExists = async (model: ModelStatic<Model>, criteria: WhereOptions) => {
+    const existingRecord = await model.findOne({ where: criteria });
+    return existingRecord !== null; // Returns true if exists, false otherwise
+};
 
 export default sequelize;

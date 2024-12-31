@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import dotenv from "dotenv";
+import { recordExists } from '../util/database';
 
 dotenv.config();
 
@@ -84,6 +85,7 @@ export const logout = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     const token = req.cookies.token;
+    const { name, email, password, roleId, teamId } = req.body;
 
     if (!token) {
         return res.status(401).json({ message: 'Unauthorized: No token provided.' });
@@ -93,7 +95,10 @@ export const createUser = async (req: Request, res: Response) => {
         if(decodedToken.roleName !== 'admin'){
             return res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
         } 
-        const { name, email, password, roleId, teamId } = req.body;
+        const userExists = await recordExists(User, {userName: name, email: email});
+        if (userExists) {
+            return res.status(409).json({ message: 'user is exist' });
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = await User.create({ name,email, password: hashedPassword, roleId, teamId });
         res.status(201).json(newUser);

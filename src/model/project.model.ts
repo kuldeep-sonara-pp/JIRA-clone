@@ -18,6 +18,10 @@ Project.init({
         type: DataTypes.STRING(50),
         allowNull: false,
     },
+    projectDescription: {
+        type: DataTypes.TEXT, // or DataTypes.STRING if you prefer
+        allowNull: true // Change to false if this field should be required
+    },
     teamId:{
         type: DataTypes.INTEGER,
         references:{

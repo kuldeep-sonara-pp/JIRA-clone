@@ -18,6 +18,7 @@ const rols_model_1 = __importDefault(require("../model/rols.model"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const database_1 = require("../util/database");
 dotenv_1.default.config();
 const findFromToken = (token) => {
     const secretKey = process.env.JWT_SECRET;
@@ -77,6 +78,7 @@ const logout = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 exports.logout = logout;
 const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.cookies.token;
+    const { name, email, password, roleId, teamId } = req.body;
     if (!token) {
         return res.status(401).json({ message: 'Unauthorized: No token provided.' });
     }
@@ -85,7 +87,10 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (decodedToken.roleName !== 'admin') {
             return res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
         }
-        const { name, email, password, roleId, teamId } = req.body;
+        const userExists = yield (0, database_1.recordExists)(user_model_1.default, { userName: name, email: email });
+        if (userExists) {
+            return res.status(409).json({ message: 'user is exist' });
+        }
         const hashedPassword = yield bcrypt_1.default.hash(password, 10);
         const newUser = yield user_model_1.default.create({ name, email, password: hashedPassword, roleId, teamId });
         res.status(201).json(newUser);
