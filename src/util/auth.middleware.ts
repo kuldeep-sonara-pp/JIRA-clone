@@ -26,5 +26,20 @@ const checkToken = (req: Request, res: Response, next: NextFunction) => {
         next(); 
     });
 };
+interface TokenPayload {
+    userId: number; // Adjust as necessary
+    roleName: string;
+    teamId?: number; // Optional if not always provided
+}
+
+export const findFromToken = (token: string) => {
+    const secretKey = process.env.JWT_SECRET;
+    if (!secretKey) {
+        throw new Error('Secret key is not defined in environment variables');
+    }
+
+    const decodedToken = jwt.verify(token, secretKey) as TokenPayload;
+    return decodedToken;
+};
 
 export default checkToken;

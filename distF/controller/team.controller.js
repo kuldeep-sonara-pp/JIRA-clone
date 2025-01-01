@@ -18,6 +18,19 @@ const user_model_1 = __importDefault(require("../model/user.model"));
 const rols_model_1 = __importDefault(require("../model/rols.model"));
 const database_1 = require("../util/database");
 const auth_middleware_1 = require("../util/auth.middleware");
+// interface TokenPayload {
+//     userId: number; // Adjust as necessary
+//     roleName: string;
+//     teamId?: number; // Optional if not always provided
+// }
+// const findFromToken = (token: string) => {
+//     const secretKey = process.env.JWT_SECRET;
+//     if (!secretKey) {
+//         throw new Error('Secret key is not defined in environment variables');
+//     }
+//     const decodedToken = jwt.verify(token, secretKey) as TokenPayload;
+//     return decodedToken;
+// };
 const createTeam = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { teamName, teamLeadId } = req.body;
     console.log("teamName :", teamName);
@@ -163,7 +176,7 @@ const removeTeamMember = (req, res) => __awaiter(void 0, void 0, void 0, functio
         if (!team) {
             return res.status(404).json({ message: 'Team not found' });
         }
-        const userExists = yield (0, database_1.recordExists)(user_model_1.default, { id });
+        const userExists = yield (0, database_1.recordExists)(user_model_1.default, { userId: id });
         if (!userExists) {
             return res.status(404).json({ message: 'user is not exist' });
         }
@@ -189,7 +202,7 @@ const addMeberToTeam = (req, res) => __awaiter(void 0, void 0, void 0, function*
         if (!team) {
             return res.status(404).json({ message: 'Team not found' });
         }
-        const userExists = yield (0, database_1.recordExists)(user_model_1.default, { id: teamMemberId });
+        const userExists = yield (0, database_1.recordExists)(user_model_1.default, { userId: id });
         if (!userExists) {
             return res.status(404).json({ message: 'user is not exist' });
         }

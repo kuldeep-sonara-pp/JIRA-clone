@@ -10,7 +10,7 @@ const router = (0, express_1.Router)();
 // @ts-ignore
 router.post("/create", auth_middleware_1.default, roles_controller_1.createRole);
 // @ts-ignore
-router.get("/", auth_middleware_1.default, roles_controller_1.getRoles);
+router.get("/get", auth_middleware_1.default, roles_controller_1.getRoles);
 // @ts-ignore
 router.put("/update/:roleId", auth_middleware_1.default, roles_controller_1.updateRole);
 // @ts-ignore

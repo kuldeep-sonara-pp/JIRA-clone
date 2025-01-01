@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createUser, deleteUser, getAllUsers, getUser, login, logout, updateUser } from "../controller/user.controller";
+import { createUser, deleteUser, getAllUsers, getUserById, getUserByRole, login, logout, updateUser } from "../controller/user.controller";
 import checkToken from "../util/auth.middleware";
 
 const router = Router();
@@ -11,9 +11,11 @@ router.post("/logout", checkToken, logout);
 // @ts-ignore
 router.post("/user/create",checkToken,createUser);
 // @ts-ignore
-router.get("/user/getuser",checkToken,getUser);
+router.get("/user/role/:role",checkToken,getUserByRole);
 // @ts-ignore
-router.get("/user/getAllUsers", checkToken, getAllUsers);
+router.get("/user/", checkToken, getAllUsers);
+// @ts-ignore
+router.get("/user/:userId", checkToken, getUserById);
 // @ts-ignore
 router.put("/user/update/:userId",checkToken, updateUser);
 // @ts-ignore

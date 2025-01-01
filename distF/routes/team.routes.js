@@ -10,16 +10,16 @@ const router = (0, express_1.Router)();
 // @ts-ignore
 router.post("/create", auth_middleware_1.default, team_controller_1.createTeam);
 // @ts-ignore
-router.get("/", auth_middleware_1.default, team_controller_1.getTeam);
+router.get("/getAllTeam", auth_middleware_1.default, team_controller_1.getTeam);
 // @ts-ignore
-router.get("/:teamId", auth_middleware_1.default, team_controller_1.getTeamById);
+router.get("/getTeam/:teamId", auth_middleware_1.default, team_controller_1.getTeamById);
 // @ts-ignore
-router.put("/update/:teamId", auth_middleware_1.default, team_controller_1.updateTeam);
+router.put("/updateTeam/:teamId", auth_middleware_1.default, team_controller_1.updateTeam);
 // @ts-ignore
-router.delete("/remove-member/:teamId", auth_middleware_1.default, team_controller_1.removeTeamMember);
+router.delete("/removeMember/:teamId", auth_middleware_1.default, team_controller_1.removeTeamMember);
 // @ts-ignore
-router.put("/add-member/:teamId", auth_middleware_1.default, team_controller_1.addMeberToTeam);
+router.put("/addMember/:teamId", auth_middleware_1.default, team_controller_1.addMeberToTeam);
 // @ts-ignore
-router.delete("/delete/:teamId", auth_middleware_1.default, team_controller_1.deleteTeam);
+router.delete("/deleteTeam/:teamId", auth_middleware_1.default, team_controller_1.deleteTeam);
 const teamRoutes = router;
 exports.default = teamRoutes;

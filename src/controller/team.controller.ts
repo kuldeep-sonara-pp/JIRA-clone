@@ -1,25 +1,10 @@
-import jwt from "jsonwebtoken";
+
 import Team from "../model/team.model";
 import { Request, Response } from 'express';
 import User from "../model/user.model";
 import Roles from "../model/rols.model";
 import { recordExists } from "../util/database";
-
-interface TokenPayload {
-    userId: number; // Adjust as necessary
-    roleName: string;
-    teamId?: number; // Optional if not always provided
-}
-
-const findFromToken = (token: string) => {
-    const secretKey = process.env.JWT_SECRET;
-    if (!secretKey) {
-        throw new Error('Secret key is not defined in environment variables');
-    }
-
-    const decodedToken = jwt.verify(token, secretKey) as TokenPayload;
-    return decodedToken;
-};
+import { findFromToken } from "../util/auth.middleware";
 
 export const createTeam = async (req: Request, res: Response) => {
     
@@ -190,7 +175,7 @@ export const removeTeamMember = async(req: Request, res: Response)=>{
         if(!team){
             return res.status(404).json({ message: 'Team not found' });
         }
-        const userExists = await recordExists(User, {userId:id});
+        const userExists = await recordExists(User, {id});
         if (!userExists) {
             return res.status(404).json({ message: 'user is not exist' });
         }
@@ -222,7 +207,7 @@ export const addMeberToTeam = async(req: Request, res: Response)=>{
         if(!team){
             return res.status(404).json({ message: 'Team not found' });
         }
-        const userExists = await recordExists(User, {userId:id});
+        const userExists = await recordExists(User, {id:teamMemberId});
         if (!userExists) {
             return res.status(404).json({ message: 'user is not exist' });
         }

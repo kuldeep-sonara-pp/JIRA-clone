@@ -7,7 +7,7 @@ const router = Router();
 // @ts-ignore
 router.post("/create", checkToken ,createRole);
 // @ts-ignore
-router.get("/get", checkToken ,getRoles);
+router.get("/", checkToken ,getRoles);
 // @ts-ignore
 router.put("/update/:roleId", checkToken ,updateRole);
 // @ts-ignore

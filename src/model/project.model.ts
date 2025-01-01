@@ -19,8 +19,8 @@ Project.init({
         allowNull: false,
     },
     projectDescription: {
-        type: DataTypes.TEXT, // or DataTypes.STRING if you prefer
-        allowNull: true // Change to false if this field should be required
+        type: DataTypes.TEXT,
+        allowNull: true
     },
     teamId:{
         type: DataTypes.INTEGER,

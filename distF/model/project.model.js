@@ -18,8 +18,8 @@ Project.init({
         allowNull: false,
     },
     projectDescription: {
-        type: sequelize_1.DataTypes.TEXT,
-        allowNull: true
+        type: sequelize_1.DataTypes.TEXT, // or DataTypes.STRING if you prefer
+        allowNull: true // Change to false if this field should be required
     },
     teamId: {
         type: sequelize_1.DataTypes.INTEGER,

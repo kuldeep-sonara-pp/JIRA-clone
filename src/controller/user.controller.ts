@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import dotenv from "dotenv";
 import { recordExists } from '../util/database';
+import { findFromToken } from '../util/auth.middleware';
 
 dotenv.config();
 
@@ -14,15 +15,6 @@ interface TokenPayload {
     teamId?: number; // Optional if not always provided
 }
 
-const findFromToken = (token: string) => {
-    const secretKey = process.env.JWT_SECRET;
-    if (!secretKey) {
-        throw new Error('Secret key is not defined in environment variables');
-    }
-
-    const decodedToken = jwt.verify(token, secretKey) as TokenPayload;
-    return decodedToken;
-};
 
 const generateToken = (payload: TokenPayload) => {
     const secretKey = process.env.JWT_SECRET;
@@ -95,7 +87,7 @@ export const createUser = async (req: Request, res: Response) => {
         if(decodedToken.roleName !== 'admin'){
             return res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
         } 
-        const userExists = await recordExists(User, {userName: name, email: email});
+        const userExists = await recordExists(User, { name, email});
         if (userExists) {
             return res.status(409).json({ message: 'user is exist' });
         }
@@ -111,30 +103,23 @@ export const createUser = async (req: Request, res: Response) => {
 
 };
 
-export const getUser = async (req: Request, res: Response) => {
+export const getUserByRole = async (req: Request, res: Response) => {
     const token = req.cookies.token;
     if (!token) {
         return res.status(401).json({ message: 'Unauthorized' });
     }
 
     try {
-        const userEmail = req.query.userEmail as string; 
-        const userRole = req.query.role as string;
-        
-        console.log("usreame",userEmail);
-        console.log("userRole:",userRole);
-
-        if (!userEmail || !userRole) {
-            return res.status(400).json({ message: 'Bad Request: userName and role are required.' });
+        const roleName = req.params.role as string;
+        console.log("roleName", roleName);
+        if (!roleName) {
+            return res.status(400).json({ message: 'Bad Request: role are required.' });
         }
-        const user = await User.findOne({
-            where: {
-                email: userEmail, 
-            },
+        const user = await User.findAll({
             include: [{
                 model: Roles,
                 as: 'role',
-                where: { roleName: userRole }
+                where: { roleName }
             }]
         });
 
@@ -148,6 +133,36 @@ export const getUser = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+export const getUserById = async (req: Request, res: Response) => {
+    const token = req.cookies.token;
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    try {
+        const userId = req.params.userId;
+        if (!userId) {
+            return res.status(400).json({ message: 'Bad Request: User ID is required.' });
+        }
+
+        const user = await User.findByPk(userId, {
+            include: [{
+                model: Roles,
+                as: 'role'
+            }]
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        return res.status(200).json({ user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+}
 
 export const getAllUsers = async (req: Request, res: Response) => {
     const token = req.cookies.token;
@@ -188,12 +203,11 @@ export const updateUser = async (req: Request, res: Response) => {
             return res.status(403).json({ message: 'Forbidden: You do not have permission to update a user.' });
         }
 
-        const userId = parseInt(req.params.userId, 10); // Ensure userId is an integer
+        const userId = Number(req.params.userId); // Ensure userId is an integer
         if (isNaN(userId)) {
             return res.status(400).json({ message: 'Invalid user ID' });
         }
 
-        console.log("userId", userId);
         const { name, email, roleId, teamId } = req.body;
 
         const user = await User.findByPk(userId);
@@ -201,10 +215,15 @@ export const updateUser = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.name = name;
-        user.email = email;
-        user.roleId = roleId;
-        user.teamId = teamId;
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser && existingUser.id !== userId) {
+            return res.status(400).json({ message: 'Email already in use by another user.' });
+        }
+
+        user.name = name || user.name;
+        user.email = email || user.email;
+        user.roleId = roleId || user.roleId;
+        user.teamId = teamId || user.teamId;
 
         await user.save();
         return res.status(200).json({ user });
@@ -213,6 +232,7 @@ export const updateUser = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
+
 
 export const deleteUser = async (req: Request, res: Response) => {
     const token = req.cookies.token;

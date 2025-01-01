@@ -10,14 +10,12 @@ const router = (0, express_1.Router)();
 // @ts-ignore
 router.post("/create", auth_middleware_1.default, project_controller_1.createProject);
 // @ts-ignore
-router.get("/", auth_middleware_1.default, project_controller_1.getProjects);
+router.get("/get", auth_middleware_1.default, project_controller_1.getProjects);
 // @ts-ignore
-router.get("/:projectId", auth_middleware_1.default, project_controller_1.getProjectById);
+router.get("/get/:projectId", auth_middleware_1.default, project_controller_1.getProjectById);
 // @ts-ignore
 router.put("/update/:projectId", auth_middleware_1.default, project_controller_1.updateProject);
 // @ts-ignore
 router.delete("/delete/:projectId", auth_middleware_1.default, project_controller_1.deleteProject);
-// @ts-ignore
-router.put("/reopen/:projectId", auth_middleware_1.default, project_controller_1.reopenProject);
 const projectRoutes = router;
 exports.default = projectRoutes;

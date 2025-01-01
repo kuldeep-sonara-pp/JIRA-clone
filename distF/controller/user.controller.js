@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.updateUser = exports.getAllUsers = exports.getUserById = exports.getUserByRole = exports.createUser = exports.logout = exports.login = void 0;
+exports.deleteUser = exports.updateUser = exports.getAllUsers = exports.getUser = exports.createUser = exports.logout = exports.login = void 0;
 const user_model_1 = __importDefault(require("../model/user.model"));
 const rols_model_1 = __importDefault(require("../model/rols.model"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -80,7 +80,7 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (decodedToken.roleName !== 'admin') {
             return res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
         }
-        const userExists = yield (0, database_1.recordExists)(user_model_1.default, { name, email });
+        const userExists = yield (0, database_1.recordExists)(user_model_1.default, { userName: name, email: email });
         if (userExists) {
             return res.status(409).json({ message: 'user is exist' });
         }
@@ -94,22 +94,27 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     }
 });
 exports.createUser = createUser;
-const getUserByRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const getUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.cookies.token;
     if (!token) {
         return res.status(401).json({ message: 'Unauthorized' });
     }
     try {
-        const roleName = req.params.role;
-        console.log("roleName", roleName);
-        if (!roleName) {
-            return res.status(400).json({ message: 'Bad Request: role are required.' });
+        const userEmail = req.query.userEmail;
+        const userRole = req.query.role;
+        console.log("usreame", userEmail);
+        console.log("userRole:", userRole);
+        if (!userEmail || !userRole) {
+            return res.status(400).json({ message: 'Bad Request: userName and role are required.' });
         }
-        const user = yield user_model_1.default.findAll({
+        const user = yield user_model_1.default.findOne({
+            where: {
+                email: userEmail,
+            },
             include: [{
                     model: rols_model_1.default,
                     as: 'role',
-                    where: { roleName }
+                    where: { roleName: userRole }
                 }]
         });
         if (!user) {
@@ -122,34 +127,7 @@ const getUserByRole = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         res.status(500).json({ message: 'Internal server error' });
     }
 });
-exports.getUserByRole = getUserByRole;
-const getUserById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const token = req.cookies.token;
-    if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
-    try {
-        const userId = req.params.userId;
-        if (!userId) {
-            return res.status(400).json({ message: 'Bad Request: User ID is required.' });
-        }
-        const user = yield user_model_1.default.findByPk(userId, {
-            include: [{
-                    model: rols_model_1.default,
-                    as: 'role'
-                }]
-        });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        return res.status(200).json({ user });
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
-exports.getUserById = getUserById;
+exports.getUser = getUser;
 const getAllUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const token = req.cookies.token;
     if (!token) {
@@ -185,23 +163,20 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         if (decodedToken.roleName !== 'admin') {
             return res.status(403).json({ message: 'Forbidden: You do not have permission to update a user.' });
         }
-        const userId = Number(req.params.userId); // Ensure userId is an integer
+        const userId = parseInt(req.params.userId, 10); // Ensure userId is an integer
         if (isNaN(userId)) {
             return res.status(400).json({ message: 'Invalid user ID' });
         }
+        console.log("userId", userId);
         const { name, email, roleId, teamId } = req.body;
         const user = yield user_model_1.default.findByPk(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        const existingUser = yield user_model_1.default.findOne({ where: { email } });
-        if (existingUser && existingUser.id !== userId) {
-            return res.status(400).json({ message: 'Email already in use by another user.' });
-        }
-        user.name = name || user.name;
-        user.email = email || user.email;
-        user.roleId = roleId || user.roleId;
-        user.teamId = teamId || user.teamId;
+        user.name = name;
+        user.email = email;
+        user.roleId = roleId;
+        user.teamId = teamId;
         yield user.save();
         return res.status(200).json({ user });
     }

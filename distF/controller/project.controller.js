@@ -12,13 +12,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.reopenProject = exports.deleteProject = exports.updateProject = exports.getProjectById = exports.getProjects = exports.createProject = void 0;
+exports.deleteProject = exports.updateProject = exports.getProjectById = exports.getProjects = exports.createProject = void 0;
 const project_model_1 = __importDefault(require("../model/project.model"));
 const user_model_1 = __importDefault(require("../model/user.model"));
 const team_model_1 = __importDefault(require("../model/team.model"));
 const database_1 = require("../util/database");
 const auth_middleware_1 = require("../util/auth.middleware");
-const task_model_1 = __importDefault(require("../model/task.model"));
+// interface TokenPayload {
+//     userId: number; // Adjust as necessary
+//     roleName: string;
+//     teamId?: number; // Optional if not always provided
+// }
+// const findFromToken = (token: string) => {
+//     const secretKey = process.env.JWT_SECRET;
+//     if (!secretKey) {
+//         throw new Error('Secret key is not defined in environment variables');
+//     }
+//     const decodedToken = jwt.verify(token, secretKey) as TokenPayload;
+//     return decodedToken;
+// };
 const createProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { projectName, projectDescription, teamId, startDate, endDate } = req.body;
     const token = req.cookies.token;
@@ -171,11 +183,10 @@ const deleteProject = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         if (decodedToken.roleName !== 'admin') {
             return res.status(401).json({ message: 'Unauthorized' });
         }
-        const exists = yield (0, database_1.recordExists)(project_model_1.default, { id: projectId });
+        const exists = yield (0, database_1.recordExists)(project_model_1.default, { projectId });
         if (!exists) {
             return res.status(404).json({ message: 'Project is not exists' });
         }
-        yield task_model_1.default.destroy({ where: { projectId } });
         yield project_model_1.default.destroy({ where: { id: projectId } });
         return res.status(200).json({ message: 'Project deleted successfully' });
     }
@@ -185,24 +196,3 @@ const deleteProject = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.deleteProject = deleteProject;
-const reopenProject = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const projectId = req.params.projectId;
-    const token = req.cookies.token;
-    try {
-        const decodedToken = (0, auth_middleware_1.findFromToken)(token);
-        if (decodedToken.roleName !== 'admin') {
-            return res.status(401).json({ message: 'Unauthorized' });
-        }
-        const exists = yield (0, database_1.recordExists)(project_model_1.default, { id: projectId });
-        if (!exists) {
-            return res.status(404).json({ message: 'Project is not exists' });
-        }
-        yield project_model_1.default.update({ endDate: null }, { where: { id: projectId } });
-        return res.status(200).json({ message: 'Project reopened successfully' });
-    }
-    catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
-    }
-});
-exports.reopenProject = reopenProject;

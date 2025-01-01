@@ -7,17 +7,17 @@ const router = Router();
 // @ts-ignore
 router.post("/create", checkToken ,createTeam);
 // @ts-ignore
-router.get("/getAllTeam", checkToken ,getTeam);
+router.get("/", checkToken ,getTeam);
 // @ts-ignore
-router.get("/getTeam/:teamId", checkToken ,getTeamById);
+router.get("/:teamId", checkToken ,getTeamById);
 // @ts-ignore
-router.put("/updateTeam/:teamId", checkToken ,updateTeam);
+router.put("/update/:teamId", checkToken ,updateTeam);
 // @ts-ignore
-router.delete("/removeMember/:teamId", checkToken ,removeTeamMember);
+router.delete("/remove-member/:teamId", checkToken ,removeTeamMember);
 // @ts-ignore
-router.put("/addMember/:teamId", checkToken ,addMeberToTeam);
+router.put("/add-member/:teamId", checkToken ,addMeberToTeam);
 // @ts-ignore
-router.delete("/deleteTeam/:teamId", checkToken ,deleteTeam);
+router.delete("/delete/:teamId", checkToken ,deleteTeam);
 
 
 const teamRoutes = router;

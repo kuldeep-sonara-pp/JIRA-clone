@@ -4,22 +4,8 @@ import jwt from 'jsonwebtoken';
 import User from "../model/user.model";
 import Team from "../model/team.model";
 import { recordExists } from "../util/database";
-
-interface TokenPayload {
-    userId: number; // Adjust as necessary
-    roleName: string;
-    teamId?: number; // Optional if not always provided
-}
-
-const findFromToken = (token: string) => {
-    const secretKey = process.env.JWT_SECRET;
-    if (!secretKey) {
-        throw new Error('Secret key is not defined in environment variables');
-    }
-
-    const decodedToken = jwt.verify(token, secretKey) as TokenPayload;
-    return decodedToken;
-};
+import { findFromToken } from "../util/auth.middleware";
+import Task from "../model/task.model";
 
 export const createProject = async (req: Request, res: Response) => {
     const { projectName, projectDescription, teamId, startDate, endDate } = req.body; 
@@ -190,13 +176,41 @@ export const deleteProject = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        const exists = await recordExists(Project, { projectId });
+        const exists = await recordExists(Project, { id:projectId });
 
         if (!exists) {
             return res.status(404).json({ message: 'Project is not exists' });
         }
+
+        await Task.destroy({ where: { projectId } });
+
         await Project.destroy({ where: { id: projectId } });
         return res.status(200).json({ message: 'Project deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+}
+
+export const reopenProject = async (req: Request, res: Response) => {
+    const projectId = req.params.projectId;
+    const token = req.cookies.token;
+    try {
+        const decodedToken = findFromToken(token);
+        if(decodedToken.roleName !== 'admin'){
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const exists = await recordExists(Project, { id: projectId });
+
+        if (!exists) {
+            return res.status(404).json({ message: 'Project is not exists' });
+        }
+        await Project.update(
+            { endDate: null },
+            { where: { id: projectId } }
+        );
+        return res.status(200).json({ message: 'Project reopened successfully' });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Internal server error' });

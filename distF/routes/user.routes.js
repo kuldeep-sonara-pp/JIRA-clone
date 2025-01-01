@@ -15,11 +15,9 @@ router.post("/logout", auth_middleware_1.default, user_controller_1.logout);
 // @ts-ignore
 router.post("/user/create", auth_middleware_1.default, user_controller_1.createUser);
 // @ts-ignore
-router.get("/user/role/:role", auth_middleware_1.default, user_controller_1.getUserByRole);
+router.get("/user/getuser", auth_middleware_1.default, user_controller_1.getUser);
 // @ts-ignore
-router.get("/user/", auth_middleware_1.default, user_controller_1.getAllUsers);
-// @ts-ignore
-router.get("/user/:userId", auth_middleware_1.default, user_controller_1.getUserById);
+router.get("/user/getAllUsers", auth_middleware_1.default, user_controller_1.getAllUsers);
 // @ts-ignore
 router.put("/user/update/:userId", auth_middleware_1.default, user_controller_1.updateUser);
 // @ts-ignore

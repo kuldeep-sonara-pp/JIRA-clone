@@ -5,44 +5,43 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const database_1 = __importDefault(require("../util/database"));
-class Project extends sequelize_1.Model {
+class Team extends sequelize_1.Model {
 }
-Project.init({
+Team.init({
     id: {
         type: sequelize_1.DataTypes.INTEGER,
         autoIncrement: true,
-        primaryKey: true,
+        primaryKey: true
     },
-    projectName: {
-        type: sequelize_1.DataTypes.STRING(50),
+    teamName: {
+        type: sequelize_1.DataTypes.STRING(255),
         allowNull: false,
+        unique: true
     },
-    projectDescription: {
-        type: sequelize_1.DataTypes.TEXT,
-        allowNull: true
-    },
-    teamId: {
+    teamLeadId: {
         type: sequelize_1.DataTypes.INTEGER,
         references: {
-            model: 'teams',
+            model: 'users',
             key: 'id'
         },
+        allowNull: false
+    },
+    createdAt: {
+        type: sequelize_1.DataTypes.DATE,
+        defaultValue: sequelize_1.DataTypes.NOW,
         allowNull: false,
     },
-    startDate: {
+    updatedAt: {
         type: sequelize_1.DataTypes.DATE,
-        allowNull: true,
-    },
-    endDate: {
-        type: sequelize_1.DataTypes.DATE,
-        allowNull: true,
+        defaultValue: sequelize_1.DataTypes.NOW,
+        allowNull: false
     }
 }, {
     sequelize: database_1.default,
-    tableName: 'projects',
+    tableName: 'teams',
     timestamps: true,
     createdAt: true,
     updatedAt: true,
     underscored: true
 });
-exports.default = Project;
+exports.default = Team;

@@ -5,29 +5,45 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const database_1 = __importDefault(require("../util/database"));
-class Project extends sequelize_1.Model {
+class Task extends sequelize_1.Model {
 }
-Project.init({
+Task.init({
     id: {
         type: sequelize_1.DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true,
     },
-    projectName: {
-        type: sequelize_1.DataTypes.STRING(50),
-        allowNull: false,
-    },
-    projectDescription: {
-        type: sequelize_1.DataTypes.TEXT,
-        allowNull: true
-    },
-    teamId: {
+    projectId: {
         type: sequelize_1.DataTypes.INTEGER,
         references: {
-            model: 'teams',
-            key: 'id'
+            model: 'projects',
+            key: 'id',
         },
         allowNull: false,
+    },
+    assignedTo: {
+        type: sequelize_1.DataTypes.INTEGER,
+        references: {
+            model: 'users',
+            key: 'id',
+        },
+        allowNull: true,
+    },
+    createdBy: {
+        type: sequelize_1.DataTypes.INTEGER,
+        references: {
+            model: 'users',
+            key: 'id',
+        },
+        allowNull: false,
+    },
+    taskName: {
+        type: sequelize_1.DataTypes.STRING(255),
+        allowNull: false,
+    },
+    taskDescription: {
+        type: sequelize_1.DataTypes.TEXT,
+        allowNull: true,
     },
     startDate: {
         type: sequelize_1.DataTypes.DATE,
@@ -36,13 +52,18 @@ Project.init({
     endDate: {
         type: sequelize_1.DataTypes.DATE,
         allowNull: true,
+    },
+    status: {
+        type: sequelize_1.DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: 'To Do',
     }
 }, {
     sequelize: database_1.default,
-    tableName: 'projects',
+    tableName: 'tasks',
     timestamps: true,
     createdAt: true,
     updatedAt: true,
     underscored: true
 });
-exports.default = Project;
+exports.default = Task;
