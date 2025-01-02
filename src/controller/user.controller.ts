@@ -6,6 +6,8 @@ import { Request, Response } from 'express';
 import dotenv from "dotenv";
 import { recordExists } from '../util/database';
 import { findFromToken } from '../util/auth.middleware';
+import { chackUserStatus } from '../util/userUtil';
+
 
 dotenv.config();
 
@@ -25,71 +27,77 @@ const generateToken = (payload: TokenPayload) => {
     return jwt.sign(payload, secretKey, { expiresIn: '1h' });
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
+
     try {
         const user = await User.findOne({
             where: { email },
-            include: [{ model: Roles, as: 'role' }] 
+            include: [{ model: Roles, as: 'role' }],
         });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User not found' });
+            return;
         }
 
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            res.status(401).json({ message: 'Invalid credentials' });
+            
+            return;
         }
 
-        const roleName = user.role ? user.role.dataValues.roleName : null; 
-        const teamId = user.teamId; 
+        const roleName = user.role ? user.role.dataValues.roleName : null;
+        const teamId = user.teamId;
 
-        const tokenPayLode: TokenPayload = {
-            userId: user.id, 
+        const tokenPayload: TokenPayload = {
+            userId: user.id,
             roleName: roleName || 'guest',
-            teamId: teamId !== null ? teamId : undefined, 
+            teamId: teamId !== null ? teamId : undefined,
         };
-        
-        const token = generateToken(tokenPayLode);
 
-        res.cookie('token', token, { 
-            httpOnly: true ,
+        const token = generateToken(tokenPayload);
+        console.log("token",token);
+
+        res.cookie('token', token, {
+            httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             maxAge: 3600000,
         });
 
-        // console.log(req.cookies.token)
-
-        return res.status(200).json({ message: 'Login successful' }); 
-        
+        res.status(200).json({ message: 'Login successful' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
 
-export const logout = async (req: Request, res: Response) => {
+
+export const logout = async (req: Request, res: Response): Promise<void> => {
     res.clearCookie('token');
     res.status(200).json({ message: 'Logout successful' });
 };
 
 
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     const { name, email, password, roleId, teamId } = req.body;
 
     if (!token) {
-        return res.status(401).json({ message: 'Unauthorized: No token provided.' });
+        res.status(401).json({ message: 'Token is not found: No token provided.' });
+        return; 
     }
     try{
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            return res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
+            res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
+            return; 
         } 
         const userExists = await recordExists(User, { name, email});
         if (userExists) {
-            return res.status(409).json({ message: 'user is exist' });
+            res.status(409).json({ message: 'user is exist' });
+            return; 
         }
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = await User.create({ name,email, password: hashedPassword, roleId, teamId });
@@ -103,17 +111,19 @@ export const createUser = async (req: Request, res: Response) => {
 
 };
 
-export const getUserByRole = async (req: Request, res: Response) => {
+export const getUserByRole = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Token is not found' });
+        return; 
     }
 
     try {
         const roleName = req.params.role as string;
         console.log("roleName", roleName);
         if (!roleName) {
-            return res.status(400).json({ message: 'Bad Request: role are required.' });
+            res.status(400).json({ message: 'Bad Request: role are required.' });
+            return; 
         }
         const user = await User.findAll({
             include: [{
@@ -124,26 +134,30 @@ export const getUserByRole = async (req: Request, res: Response) => {
         });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User not found' });
+            return; 
         }
 
-        return res.status(200).json({ user });
+        res.status(200).json({ user });
+        return; 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
 
-export const getUserById = async (req: Request, res: Response) => {
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Token is not found' });
+        return; 
     }
 
     try {
         const userId = req.params.userId;
         if (!userId) {
-            return res.status(400).json({ message: 'Bad Request: User ID is required.' });
+            res.status(400).json({ message: 'Bad Request: User ID is required.' });
+            return; 
         }
 
         const user = await User.findByPk(userId, {
@@ -154,20 +168,23 @@ export const getUserById = async (req: Request, res: Response) => {
         });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User not found' });
+            return; 
         }
 
-        return res.status(200).json({ user });
+        res.status(200).json({ user });
+        return; 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
     }
 }
 
-export const getAllUsers = async (req: Request, res: Response) => {
+export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Token is not found' });
+        return; 
     }
 
     try {
@@ -175,7 +192,8 @@ export const getAllUsers = async (req: Request, res: Response) => {
         
         // Check the roleName property instead of comparing the entire token
         if (decodedToken.roleName !== 'admin') {
-            return res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
+            res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
+            return; 
         }
         const users = await User.findAll({
             include: [{
@@ -184,40 +202,46 @@ export const getAllUsers = async (req: Request, res: Response) => {
             }]
         });
 
-        return res.status(200).json({ users });
+        res.status(200).json({ users });
+        return; 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
 
-export const updateUser = async (req: Request, res: Response) => {
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Token is not found' });
+        return; 
     }
 
     try {
         const decodedToken: TokenPayload = findFromToken(token);
         if (decodedToken.roleName !== 'admin') {
-            return res.status(403).json({ message: 'Forbidden: You do not have permission to update a user.' });
+            res.status(403).json({ message: 'Forbidden: You do not have permission to update a user.' });
+            return; 
         }
 
         const userId = Number(req.params.userId); // Ensure userId is an integer
         if (isNaN(userId)) {
-            return res.status(400).json({ message: 'Invalid user ID' });
+            res.status(400).json({ message: 'Invalid user ID' });
+            return; 
         }
 
         const { name, email, roleId, teamId } = req.body;
 
         const user = await User.findByPk(userId);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User not found' });
+            return; 
         }
 
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser && existingUser.id !== userId) {
-            return res.status(400).json({ message: 'Email already in use by another user.' });
+            res.status(400).json({ message: 'Email already in use by another user.' });
+            return; 
         }
 
         user.name = name || user.name;
@@ -226,37 +250,121 @@ export const updateUser = async (req: Request, res: Response) => {
         user.teamId = teamId || user.teamId;
 
         await user.save();
-        return res.status(200).json({ user });
+        res.status(200).json({ user });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 };
 
 
-export const deleteUser = async (req: Request, res: Response) => {
+export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        res.status(401).json({ message: 'Token is not found' });
+        return; 
     }
 
     try {
         const decodedToken: TokenPayload = findFromToken(token);
         if (decodedToken.roleName !== 'admin') {
-            return res.status(403).json({ message: 'Forbidden: You do not have permission to delete a user.' });
+            res.status(403).json({ message: 'Forbidden: You do not have permission to delete a user.' });
+            return; 
         }
 
         const userId = req.params.userId;
 
         const user = await User.findByPk(userId);
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User not found' });
+            return; 
+        }
+
+        const userActive = await chackUserStatus(user.id);
+        if (userActive) {
+            res.status(400).json({ message: 'User is active! So plase inactive first tha return' });
+            return; 
         }
 
         await user.destroy();
-        return res.status(200).json({ message: 'User deleted successfully' });
+        res.status(200).json({ message: 'User deleted successfully' });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
+    }
+};
+
+
+export const chnageStataus = async (req: Request, res: Response): Promise<void> => {
+    const token = req.cookies.token;
+    if (!token) {
+        res.status(401).json({ message: 'Token is not found' });
+        return; 
+    }
+
+    try {
+        const decodedToken: TokenPayload = findFromToken(token);
+        if (decodedToken.roleName !== 'admin') {
+            res.status(403).json({ message: 'Forbidden: You do not have permission to update a user.' });
+            return; 
+        }
+
+        const userId = req.params.userId;
+        const user = await User.findByPk(userId);
+        if (!user) {
+            res.status(404).json({ message: 'User not found' });
+            return; 
+        }
+
+        const userActive = await chackUserStatus(user.id);
+        if (userActive) {
+            await User.update({ status: 'inactive' }, { where: { id: userId } });
+            res.status(200).json({ message: 'User inactivated successfully' });
+            return; 
+        }
+
+        await User.update({ status: 'active' }, { where: { id: userId } });
+        res.status(200).json({ message: 'User activated successfully' });
+        return; 
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
+    }
+}
+
+export const getUserByState = async (req: Request, res: Response): Promise<void> => {
+    console.log('==================== Request Received ====================');
+    const token = req.cookies.token;
+    console.log("Query parameters:", req.query);
+
+    if (!token) {
+        res.status(401).json({ message: 'Token is not found' });
+        return; 
+    }
+
+    try {
+        const decodedToken: TokenPayload = findFromToken(token);
+        if (decodedToken.roleName !== 'admin') {
+            res.status(403).json({ message: 'Forbidden: You do not have permission to view users.' });
+            return; 
+        }
+
+        const state = req.query.state;
+        if (!state) {
+            res.status(400).json({ message: 'Bad Request: State is required.' });
+            return; 
+        }
+
+        console.log("Fetching users with status:", state);
+        const users = await User.findAll({ where: { status: state } });
+        res.status(200).json({ users });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 };

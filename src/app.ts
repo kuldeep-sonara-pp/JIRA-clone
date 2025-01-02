@@ -1,5 +1,5 @@
 import dotenv from "dotenv"; // Move this line to the top
-import express, { NextFunction, Request, Response } from "express";
+import express from "express";
 import sequelize from "./util/database";
 import cookieParser from "cookie-parser";
 

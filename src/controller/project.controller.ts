@@ -1,13 +1,12 @@
 import Project from "../model/project.model";
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import User from "../model/user.model";
 import Team from "../model/team.model";
 import { recordExists } from "../util/database";
 import { findFromToken } from "../util/auth.middleware";
 import Task from "../model/task.model";
 
-export const createProject = async (req: Request, res: Response) => {
+export const createProject = async (req: Request, res: Response) : Promise<void> => {
     const { projectName, projectDescription, teamId, startDate, endDate } = req.body; 
     const token = req.cookies.token;
     try {
@@ -15,17 +14,33 @@ export const createProject = async (req: Request, res: Response) => {
 
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
         if (!projectName || !teamId) {
-            return res.status(400).json({ message: 'Project name and team ID are required' });
+            res.status(400).json({ message: 'Project name and team ID are required' });
+            return; 
         }
 
         const exists = await recordExists(Project, { project_name: projectName, team_id: teamId });
 
         if (exists) {
-            return res.status(409).json({ message: 'Project already exists' });
+            res.status(409).json({ message: 'Project already exists' });
+            return; 
         }
+
+        const teamExists = await recordExists(Team, { id: teamId });
+        if (!teamExists) {
+            res.status(404).json({ message: 'Team not found' });
+            return; 
+        }
+
+        const teamisInotherProject = await recordExists(Project, { team_id: teamId });
+        if (teamisInotherProject) {
+            res.status(409).json({ message: 'Team is already in a other project' });
+            return; 
+        }
+
 
         const project = await Project.create({
             projectName: projectName,          
@@ -34,19 +49,22 @@ export const createProject = async (req: Request, res: Response) => {
             startDate: startDate || null,     
             endDate: endDate || null          
         });
-        return res.status(201).json({ project });
+        res.status(201).json({ project });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 }
 
-export const getProjects = async (req: Request, res: Response) => {
+export const getProjects = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
         const projects = await Project.findAll({
             include: [
@@ -63,7 +81,8 @@ export const getProjects = async (req: Request, res: Response) => {
         });
 
         if (!projects || projects.length === 0) {
-            return res.status(404).json({ message: 'No projects found' });
+            res.status(404).json({ message: 'No projects found' });
+            return; 
         }
 
         // Post-process to filter out the teamLead from teamMembers
@@ -75,26 +94,29 @@ export const getProjects = async (req: Request, res: Response) => {
 
                 // Filter out the teamLead from the teamMembers
                 plainProject.team.teamMembers = teamMembers.filter(
-                    (member: any) => member.id !== teamLead?.id
+                    (member: { id: number; name: string; email: string }) => member.id !== teamLead?.id
                 );
             }
 
             return plainProject;
         });
-        return res.status(200).json({ processedProjects });
+        res.status(200).json({ processedProjects });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 }
 
-export const getProjectById = async (req: Request, res: Response) => {
+export const getProjectById = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     const projectId = req.params.projectId;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
         const project = await Project.findByPk(projectId, {
             include: [
@@ -112,7 +134,8 @@ export const getProjectById = async (req: Request, res: Response) => {
         });
 
         if (!project) {
-            return res.status(404).json({ message: 'Project not found' });
+            res.status(404).json({ message: 'Project not found' });
+            return; 
         }
 
         // Convert the project to a plain object
@@ -123,17 +146,19 @@ export const getProjectById = async (req: Request, res: Response) => {
             const { teamLead, teamMembers } = plainProject.team;
 
             plainProject.team.teamMembers = teamMembers.filter(
-                (member: any) => member.id !== teamLead?.id
+                (member: { id: number; name: string; email: string }) => member.id !== teamLead?.id
             );
         }
-        return res.status(200).json({ plainProject });
+        res.status(200).json({ plainProject });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 }
 
-export const updateProject = async (req: Request, res: Response) => {
+export const updateProject = async (req: Request, res: Response): Promise<void> => {
     const { projectName, projectDescription, teamId, startDate, endDate } = req.body; // Add startDate and endDate
     const projectId = req.params.projectId;
     const token = req.cookies.token;
@@ -143,10 +168,19 @@ export const updateProject = async (req: Request, res: Response) => {
     try {
         const decodedToken = findFromToken(token);
         if (decodedToken.roleName !== 'admin') {
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
         
-        const updateData: any = {};
+        interface UpdateData {
+            projectName?: string;
+            projectDescription?: string;
+            teamId?: number;
+            startDate?: Date | null;
+            endDate?: Date | null;
+        }
+
+        const updateData: UpdateData = {};
         if (projectName) updateData.projectName = projectName
         if (projectDescription) updateData.projectDescription = projectDescription;
         if (teamId) updateData.teamId = teamId;
@@ -156,63 +190,105 @@ export const updateProject = async (req: Request, res: Response) => {
         const [updatedRows] = await Project.update(updateData, { where: { id: projectId } });
       
         if (updatedRows === 0) {
-            return res.status(404).json({ message: 'Project not found' });
+            res.status(404).json({ message: 'Project not found' });
+            return; 
         }
         
-        return res.status(200).json({ message: 'Project updated successfully' });
+        res.status(200).json({ message: 'Project updated successfully' });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 };
 
 
-export const deleteProject = async (req: Request, res: Response) => {
+export const deleteProject = async (req: Request, res: Response): Promise<void> => {
     const projectId = req.params.projectId;
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
 
         const exists = await recordExists(Project, { id:projectId });
 
         if (!exists) {
-            return res.status(404).json({ message: 'Project is not exists' });
+            res.status(404).json({ message: 'Project is not exists' });
+            return; 
         }
 
         await Task.destroy({ where: { projectId } });
 
         await Project.destroy({ where: { id: projectId } });
-        return res.status(200).json({ message: 'Project deleted successfully' });
+        res.status(200).json({ message: 'Project deleted successfully' });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 }
 
-export const reopenProject = async (req: Request, res: Response) => {
+export const reopenProject = async (req: Request, res: Response): Promise<void> => {
     const projectId = req.params.projectId;
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
 
         const exists = await recordExists(Project, { id: projectId });
 
         if (!exists) {
-            return res.status(404).json({ message: 'Project is not exists' });
+            res.status(404).json({ message: 'Project is not exists' });
+            return; 
         }
         await Project.update(
             { endDate: null },
             { where: { id: projectId } }
         );
-        return res.status(200).json({ message: 'Project reopened successfully' });
+        res.status(200).json({ message: 'Project reopened successfully' });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
+    }
+}
+
+export const  finalizeProject = async (req: Request, res: Response): Promise<void> => {
+    const projectId = req.params.projectId;
+    const token = req.cookies.token;
+    try {
+        const decodedToken = findFromToken(token);
+        if(decodedToken.roleName !== 'admin'){
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
+        }
+
+        const exists = await recordExists(Project, { id: projectId });
+
+        if (!exists) {
+            res.status(404).json({ message: 'Project is not exists' });
+            return; 
+        }
+
+        
+        await Project.update(
+            { endDate: new Date() },
+            { where: { id: projectId } }
+        );
+        res.status(200).json({ message: 'Project finalized successfully' });
+        return; 
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 }

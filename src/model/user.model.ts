@@ -9,6 +9,7 @@ class User extends Model {
     public password!: string; // VARCHAR(255)
     public roleId!: number | null;
     public teamId!: number | null;
+    public status!: 'active' | 'inactive'; 
 
     public role?: Roles;
 }
@@ -50,7 +51,11 @@ User.init(
             },
             onDelete: 'SET NULL', // Set null on delete of referenced team
             allowNull: true, // Allow null if no team assigned
-        }
+        },
+        status: {
+            type: DataTypes.ENUM('active', 'inactive'),
+            allowNull: false,
+        },
     },
     {
         sequelize,

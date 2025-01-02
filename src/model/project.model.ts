@@ -28,7 +28,7 @@ Project.init({
             model:'teams',
             key:'id'
         },
-        allowNull: false,
+        allowNull: true,
     },
     startDate:{
         type: DataTypes.DATE,

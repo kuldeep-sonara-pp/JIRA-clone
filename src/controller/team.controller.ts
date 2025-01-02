@@ -6,7 +6,7 @@ import Roles from "../model/rols.model";
 import { recordExists } from "../util/database";
 import { findFromToken } from "../util/auth.middleware";
 
-export const createTeam = async (req: Request, res: Response) => {
+export const createTeam = async (req: Request, res: Response) : Promise<void> => {
     
     const { teamName, teamLeadId } = req.body;
     console.log("teamName :", teamName);
@@ -14,17 +14,25 @@ export const createTeam = async (req: Request, res: Response) => {
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
         const teamLeadExists = await recordExists(User, teamLeadId);
         if (!teamLeadExists) {
-            return res.status(404).json({ message: 'Team lead not found' });
+            res.status(404).json({ message: 'Team lead not found' });
+            return; 
         }
         const teamExists = await recordExists(Team, { teamName : teamName, teamLeadId: teamLeadId });
         if (teamExists) {
-            return res.status(409).json({ message: 'Team is alrady exist' });
+            res.status(409).json({ message: 'Team is alrady exist' });
+            return; 
         }
 
+        const teamLeadIdIsRole = await recordExists(User, { id: teamLeadId, roleId: 2 });
+        if (!teamLeadIdIsRole) {
+            res.status(400).json({ message: 'Team lead must be a team lead' });
+            return; 
+        }
         const team = await Team.create({
             teamName,
             teamLeadId
@@ -33,19 +41,22 @@ export const createTeam = async (req: Request, res: Response) => {
             { teamId: team.id }, // Set the new team ID
             { where: { id: teamLeadId } } // Find the user by teamLeadId
         );
-        return res.status(201).json({ massage: 'Team created successfully' });
+        res.status(201).json({ massage: 'Team created successfully' });
+        return; 
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return; 
     }
 }
 
-export const getTeam = async (req: Request, res: Response) => {
+export const getTeam = async (req: Request, res: Response) : Promise<void> => {
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return; 
         }
         const team = await Team.findAll({
             include: [
@@ -58,25 +69,28 @@ export const getTeam = async (req: Request, res: Response) => {
             const plainTeam = team.get({ plain: true }); 
             const { teamLead, teamMembers } = plainTeam;
             const filteredTeamMembers = teamMembers.filter(
-                (member: any) => member.id !== teamLead.id
+                (member: User) => member.id !== teamLead.id
             );
 
             return { ...plainTeam, teamMembers: filteredTeamMembers };
         }); 
-        return res.status(200).json(filteredTeam);
+        res.status(200).json(filteredTeam);
+        return;
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return;
     }
 };
 
-export const getTeamById = async (req: Request, res: Response) => {
+export const getTeamById = async (req: Request, res: Response) : Promise<void> => {
     const id = req.params.teamId;
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return;
         }
         const team = await Team.findByPk(id, {
             include: [
@@ -86,35 +100,46 @@ export const getTeamById = async (req: Request, res: Response) => {
         });
 
         if (!team) {
-            return res.status(404).json({ message: 'Team not found' });
+            res.status(404).json({ message: 'Team not found' });
+            return;
         }
 
         const plainTeam = team.get({ plain: true });
         const { teamLead, teamMembers } = plainTeam;
         const filteredTeamMembers = teamMembers.filter(
-            (member: any) => member.id !== teamLead.id
+            (member: User) => member.id !== teamLead.id
         );
 
-        return res.status(200).json({ ...plainTeam, teamMembers: filteredTeamMembers });
+        res.status(200).json({ ...plainTeam, teamMembers: filteredTeamMembers });
+        return;
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return;
     }
 }
 
-export const updateTeam = async (req: Request, res: Response) => {
+export const updateTeam = async (req: Request, res: Response) : Promise<void> => {
     const { teamName, teamLeadId } = req.body;
     const  id  = req.params.teamId;
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return;
         }
 
         const team = await Team.findByPk(id);
         if (!team) {
-            return res.status(404).json({ message: 'Team not found' });
+            res.status(404).json({ message: 'Team not found' });
+            return;
+        }
+        
+        const teamLeadIdIsRole = await recordExists(User, { id: teamLeadId, roleId: 2 });
+        if (!teamLeadIdIsRole) {
+            res.status(400).json({ message: 'Team lead must be a team lead' });
+            return; 
         }
 
         if(teamLeadId){
@@ -129,7 +154,8 @@ export const updateTeam = async (req: Request, res: Response) => {
             console.log("newTEamLead",newTeamLead);
 
             if(!newTeamLead || newTeamLead.role?.roleName !== 'teamLead'){
-                return res.status(400).json({ message: 'Invalid team lead ID' });
+                res.status(400).json({ message: 'Invalid team lead ID' });
+                return;
             }
         }
 
@@ -154,30 +180,41 @@ export const updateTeam = async (req: Request, res: Response) => {
             );
         }
 
-        return res.status(200).json({ message: 'Team updated successfully' });
+        res.status(200).json({ message: 'Team updated successfully' });
+        return;
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return;
     }
 };
 
-export const removeTeamMember = async(req: Request, res: Response)=>{
+export const removeTeamMember = async(req: Request, res: Response): Promise<void> =>{
     const { teamMemberId } = req.body;
     const id = req.params.teamId;
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return;
         }
 
         const team = await Team.findByPk(id);
         if(!team){
-            return res.status(404).json({ message: 'Team not found' });
+            res.status(404).json({ message: 'Team not found' });
+            return;
         }
-        const userExists = await recordExists(User, {id});
+        const userExists = await recordExists(User, {id: teamMemberId});
         if (!userExists) {
-            return res.status(404).json({ message: 'user is not exist' });
+            res.status(404).json({ message: 'user is not exist' });
+            return;
+        }
+
+        const userIsinTeam = await recordExists(User, {id: teamMemberId, teamId: id});
+        if (!userIsinTeam) {
+            res.status(404).json({ message: 'user is not in the team' });
+            return;
         }
 
         await User.update(
@@ -185,31 +222,36 @@ export const removeTeamMember = async(req: Request, res: Response)=>{
             { where: { id: teamMemberId } }
         );
 
-        return res.status(200).json({ message: 'Team member removed successfully' });
+        res.status(200).json({ message: 'Team member removed successfully' });
+        return;
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return;
     }
-}
+};
 
 
-export const addMeberToTeam = async(req: Request, res: Response)=>{
+export const addMeberToTeam = async(req: Request, res: Response) : Promise<void> =>{
     const { teamMemberId } = req.body;
     const id = req.params.teamId;
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return;
         }
 
         const team = await Team.findByPk(id);
         if(!team){
-            return res.status(404).json({ message: 'Team not found' });
+            res.status(404).json({ message: 'Team not found' });
+            return;
         }
         const userExists = await recordExists(User, {id:teamMemberId});
         if (!userExists) {
-            return res.status(404).json({ message: 'user is not exist' });
+            res.status(404).json({ message: 'user is not exist' });
+            return;
         }
 
         await User.update(
@@ -217,25 +259,29 @@ export const addMeberToTeam = async(req: Request, res: Response)=>{
             { where: { id: teamMemberId } }
         );
 
-        return res.status(200).json({ message: 'Team member added successfully' });
+        res.status(200).json({ message: 'Team member added successfully' });
+        return;
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return;
     }
-}
+};
 
-export const deleteTeam = async(req: Request, res: Response)=>{
+export const deleteTeam = async(req: Request, res: Response) : Promise<void> =>{
     const id = req.params.teamId;
     const token = req.cookies.token;
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            return res.status(401).json({ message: 'Unauthorized' });
+            res.status(401).json({ message: 'Token is not found' });
+            return;
         }
 
         const team = await Team.findByPk(id);
         if(!team){
-            return res.status(404).json({ message: 'Team not found' });
+            res.status(404).json({ message: 'Team not found' });
+            return;
         }
 
         await User.update(
@@ -244,9 +290,11 @@ export const deleteTeam = async(req: Request, res: Response)=>{
         );
 
         await team.destroy();
-        return res.status(200).json({ message: 'Team deleted successfully' });
+        res.status(200).json({ message: 'Team deleted successfully' });
+        return;
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ message: 'Internal server error' });
+        return;
     }
-}
+};
