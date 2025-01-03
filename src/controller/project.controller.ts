@@ -5,6 +5,10 @@ import Team from "../model/team.model";
 import { recordExists } from "../util/database";
 import { findFromToken } from "../util/auth.middleware";
 import Task from "../model/task.model";
+import { finalizeProjectHandler } from "../util/projectFinlize";
+import { FindOptions, Op } from "sequelize";
+import { paginate } from "../util/paginate";
+
 
 export const createProject = async (req: Request, res: Response) : Promise<void> => {
     const { projectName, projectDescription, teamId, startDate, endDate } = req.body; 
@@ -14,7 +18,7 @@ export const createProject = async (req: Request, res: Response) : Promise<void>
 
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
         if (!projectName || !teamId) {
@@ -63,10 +67,11 @@ export const getProjects = async (req: Request, res: Response): Promise<void> =>
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
-        const projects = await Project.findAll({
+
+        const options: FindOptions = {
             include: [
                 {
                     model: Team,
@@ -77,31 +82,39 @@ export const getProjects = async (req: Request, res: Response): Promise<void> =>
                     ]
                 }
             ],
-            // attributes: ['id', 'projectName', 'projectDescription' 'createdAt', 'updatedAt', 'startDate', 'endDate']
-        });
-
-        if (!projects || projects.length === 0) {
-            res.status(404).json({ message: 'No projects found' });
-            return; 
+            // attributes: ['id', 'projectName', 'projectDescription', 'createdAt', 'updatedAt', 'startDate', 'endDate']
         }
-
-        // Post-process to filter out the teamLead from teamMembers
-        const processedProjects = projects.map((project) => {
-            const plainProject = project.get({ plain: true });
-
-            if (plainProject.team) {
-                const { teamLead, teamMembers } = plainProject.team;
-
-                // Filter out the teamLead from the teamMembers
-                plainProject.team.teamMembers = teamMembers.filter(
-                    (member: { id: number; name: string; email: string }) => member.id !== teamLead?.id
-                );
+        try {
+            const projects = await paginate(Project, options, req);
+            if (!projects) {
+                res.status(404).json({ message: 'No projects found' });
+                return; 
             }
 
-            return plainProject;
-        });
-        res.status(200).json({ processedProjects });
-        return; 
+            const processedProjects = projects.data.map((project) => {
+                const plainProject = project.get({ plain: true });
+    
+                if (plainProject.team) {
+                    const { teamLead, teamMembers } = plainProject.team;
+    
+                    // Filter out the teamLead from the teamMembers
+                    plainProject.team.teamMembers = teamMembers.filter(
+                        (member: { id: number; name: string; email: string }) => member.id !== teamLead?.id
+                    );
+                }
+    
+                return plainProject;
+            });
+            res.status(200).json({ projects,processedProjects });
+        } catch (error: unknown) {
+            // Check for pagination-related errors
+            if (error instanceof Error && (error.message.includes("does not exist") || error.message.includes("invalid"))) {
+                res.status(404).json({ message: error.message }); // Custom message for invalid page
+            } else {
+                res.status(400).json({ message: (error as Error).message }); // General error for pagination
+            }
+        } 
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -115,7 +128,7 @@ export const getProjectById = async (req: Request, res: Response): Promise<void>
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
         const project = await Project.findByPk(projectId, {
@@ -168,7 +181,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
     try {
         const decodedToken = findFromToken(token);
         if (decodedToken.roleName !== 'admin') {
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
         
@@ -210,7 +223,7 @@ export const deleteProject = async (req: Request, res: Response): Promise<void> 
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
 
@@ -239,7 +252,7 @@ export const reopenProject = async (req: Request, res: Response): Promise<void> 
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
 
@@ -262,33 +275,109 @@ export const reopenProject = async (req: Request, res: Response): Promise<void> 
     }
 }
 
-export const  finalizeProject = async (req: Request, res: Response): Promise<void> => {
+export const finalizeProject = async (req: Request, res: Response): Promise<void> => {
     const projectId = req.params.projectId;
     const token = req.cookies.token;
-    try {
-        const decodedToken = findFromToken(token);
-        if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
-            return; 
-        }
-
-        const exists = await recordExists(Project, { id: projectId });
-
-        if (!exists) {
-            res.status(404).json({ message: 'Project is not exists' });
-            return; 
-        }
-
-        
-        await Project.update(
-            { endDate: new Date() },
-            { where: { id: projectId } }
-        );
-        res.status(200).json({ message: 'Project finalized successfully' });
-        return; 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
+    const decodedToken = findFromToken(token);
+    if(decodedToken.roleName !== 'admin'){
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
     }
+    const result = await finalizeProjectHandler(parseInt(projectId), decodedToken.userId);
+    if (result) {
+        res.status(result.statusCode).json({ message: result.message });
+        return;
+    }
+    res.status(200).json({ message: 'Project finalized successfully' });
 }
+
+export const getProjectsByFilter = async (req: Request, res: Response): Promise<void> => {
+    const token = req.cookies.token;
+    if (token === undefined) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return; 
+    }
+    
+    try {
+        const decodedToken = findFromToken(token);
+        if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== 'teamLead') {
+            res.status(401).json({ message: 'Unauthorized' });
+            return; 
+        }
+         
+        const { teamId, startDate, endDate, projectName, activeProject = false, closeProject = false, soonToStartProject = false } = req.query;
+
+        const options: FindOptions = {
+            where: {},
+            include: [],
+        };
+
+        // Using a type assertion to allow Op symbols in the where clause
+        const whereClause: any = {};
+
+        if (teamId) whereClause['teamId'] = teamId;
+        if (startDate && typeof startDate === 'string') whereClause['startDate'] = { [Op.gte]: new Date(startDate) };
+        if (endDate && typeof endDate === 'string') whereClause['endDate'] = { [Op.lte]: new Date(endDate) };
+        if (projectName) whereClause['projectName'] = { [Op.like]: `%${projectName}%` };
+
+        // Filter for active projects
+        if (activeProject) {
+            console.log('Active Project Filter Applied');
+            
+            // Log current date for reference
+            const currentDate = new Date();
+            console.log('Current Date:', currentDate);
+        
+            whereClause[Op.and] = [
+                {
+                    // Start date must be in the past
+                    startDate: { [Op.lt]: currentDate },
+                },
+                {
+                    [Op.or]: [
+                        // End date must be in the future or end date is null
+                        { endDate: { [Op.gt]: currentDate } },
+                        { endDate: null },
+                    ],
+                },
+            ];
+            
+            console.log('Where Clause:', JSON.stringify(whereClause, null, 2));
+        }
+        
+        
+
+        // Filter for closed projects
+        if (closeProject) {
+            whereClause['endDate'] = { [Op.lt]: new Date() }; // endDate has passed
+        }
+
+        // Filter for soon to start projects
+        if (soonToStartProject) {
+            whereClause['startDate'] = { [Op.gte]: new Date() }; // startDate is in the future
+        }
+
+        // Combine where clause into options
+        options.where = whereClause;
+
+        // Log the options to debug
+        console.log('Query options:', options);
+
+        // Fetch projects based on the filter
+        try {
+            const porject = await paginate(Project, options, req);
+            res.status(200).json({ porject });
+        } catch (error: unknown) {
+            // Check for pagination-related errors
+            if (error instanceof Error && (error.message.includes("does not exist") || error.message.includes("invalid"))) {
+                res.status(404).json({ message: error.message }); // Custom message for invalid page
+            } else {
+                res.status(400).json({ message: (error as Error).message }); // General error for pagination
+            }
+        } 
+        
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};

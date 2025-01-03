@@ -5,6 +5,9 @@ import Task from '../model/task.model';
 import User from '../model/user.model';
 import Project from '../model/project.model';
 import { dateCheck } from '../util/dateChack';
+import { finalizeProjectHandler } from '../util/projectFinlize';
+import { FindOptions, Op } from 'sequelize';
+import { paginate } from '../util/paginate';
 
 export const createTask = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -12,11 +15,23 @@ export const createTask = async (req: Request, res: Response): Promise<void> => 
         const decodedToken = findFromToken(token);
 
         if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
 
         const { projectId, taskName, taskDescription, status } = req.body;
+
+        if(!projectId || !taskName || !taskDescription){
+            res.status(400).json({ message: 'Project ID, task name and task description are required' });
+            return; 
+        }
+
+        const project = await Project.findByPk(projectId);
+        if (!project) {
+            res.status(404).json({ message: 'Project not found' });
+            return; 
+        }
+        
 
         const newTask = await Task.create({
             projectId,
@@ -41,7 +56,7 @@ export const updateAssignedToTaskAndStaus = async (req: Request, res: Response):
         const decodedToken = findFromToken(token);
 
         if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'unutorize' });
             return; 
         }
 
@@ -82,6 +97,7 @@ export const updateAssignedToTaskAndStaus = async (req: Request, res: Response):
         }
         if(assignedTo){
             const user = await User.findByPk(assignedTo);
+            console.log("user", user);
             if (!user || user.teamId !== project.teamId) {
                 res.status(404).json({ message: 'Assigned user is not a member of the project team.' });
                 return; 
@@ -133,6 +149,7 @@ export const updateAssignedToTaskAndStaus = async (req: Request, res: Response):
         
         await task.save();
         await project.save();
+        if(status === 'Completed' && updatecompleteDate) await finalizeProjectHandler(project.id, decodedToken.userId);
         res.status(200).json({ message : 'Task updated successfully' });
         return; 
         
@@ -143,57 +160,13 @@ export const updateAssignedToTaskAndStaus = async (req: Request, res: Response):
     }
 }
 
-export const getTaskByProject = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const token = req.cookies.token;
-        const decodedToken = findFromToken(token);
-
-        if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
-            return; 
-        }
-
-        const projectId = req.params.projectId;
-        if(!projectId){
-            res.status(400).json({ message: 'Project ID is required' });
-            return; 
-        }
-        
-
-        const tasks = await Task.findAll({
-            where: {
-                projectId
-            },
-            include: [
-                {
-                    model: Project, 
-                    as: 'project',
-                    attributes: ['id', 'projectName', 'projectDescription'],
-                },
-                {
-                    model: User, 
-                    as: 'creator',
-                    attributes: ['id', 'name', 'email'],
-                },
-            ],
-        });
-
-        res.status(200).json({ tasks });
-        return; 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'An error occurred while fetching tasks.' });
-        return; 
-    }
-}
-
 export const getTaskById = async (req: Request, res: Response): Promise<void> => {
     try {
         const token = req.cookies.token;
         const decodedToken = findFromToken(token);
 
         if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
 
@@ -239,16 +212,16 @@ export const getAllTasks = async (req: Request, res: Response): Promise<void> =>
         const decodedToken = findFromToken(token);
 
         if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
 
-        const tasks = await Task.findAll({
+        const options: FindOptions = {
             include: [
                 {
                     model: Project, 
                     as: 'project', 
-                    attributes: ['id', 'projectName', 'projectDescription'], 
+                    attributes: ['id', 'projectName', 'projectDescription', 'startDate', 'endDate'], 
                 },
                 {
                     model: User, 
@@ -256,10 +229,19 @@ export const getAllTasks = async (req: Request, res: Response): Promise<void> =>
                     attributes: ['id', 'name', 'email'], 
                 },
             ],
-        });
+        }
+        try {
+            const tasks = await paginate(Task, options, req);
+            res.status(200).json({ tasks });
+        }catch (error: unknown) {
+            // Check for pagination-related errors
+            if (error instanceof Error && (error.message.includes("does not exist") || error.message.includes("invalid"))) {
+                res.status(404).json({ message: error.message }); // Custom message for invalid page
+            } else {
+                res.status(400).json({ message: (error as Error).message }); // General error for pagination
+            }
+        } 
 
-        res.status(200).json({ tasks });
-        return; 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred while fetching tasks.' });
@@ -273,7 +255,7 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
         const decodedToken = findFromToken(token);
 
         if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
 
@@ -304,14 +286,13 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
     }
 }
 
-
 export const deleteTask = async (req: Request, res: Response): Promise<void> => {
     try {
         const token = req.cookies.token;
         const decodedToken = findFromToken(token);
 
         if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
 
@@ -337,45 +318,54 @@ export const deleteTask = async (req: Request, res: Response): Promise<void> => 
     }
 }
 
-export const getTaskByUser = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const token = req.cookies.token;
-        const decodedToken = findFromToken(token);
+export const getTaskByFilter = async (req: Request, res: Response): Promise<void> => {
+    const token = req.cookies.token;
 
-        if (decodedToken.roleName !== 'admin' && decodedToken.roleName !== "teamLead") {
-            res.status(401).json({ message: 'Token is not found' });
-            return; 
-        }
-
-        const userId = req.params.userId;
-        if(!userId){
-            res.status(400).json({ message: 'User ID is required' });
-            return; 
-        }
-
-        const tasks = await Task.findAll({
-            where: {
-                assignedTo: userId
-            },
-            include: [
-                {
-                    model: Project, 
-                    as: 'project', 
-                    attributes: ['id', 'projectName', 'projectDescription'], 
-                },
-                {
-                    model: User, 
-                    as: 'creator', 
-                    attributes: ['id', 'name', 'email'], 
-                },
-            ],
-        });
-
-        res.status(200).json({ tasks });
+    if (!token) {
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
+    }
+    try {
+        const decodedToken = findFromToken(token);
+        if (decodedToken.roleName !== 'admin') {
+            res.status(403).json({ message: 'Forbidden: You do not have permission to view tasks.' });
+            return; 
+        }
+        const { projectId, assignedTo, createdBy, taskName, status, startDate, endDate } = req.query;
+
+        const options: FindOptions  = {
+            where: {},
+            include: [],
+        };
+
+        const whereClause : FindOptions['where'] = {};
+
+        if(projectId) whereClause['projectId'] = projectId;
+        if(assignedTo) whereClause['assignedTo'] = assignedTo;
+        if(createdBy) whereClause['createdBy'] = createdBy;
+        if(taskName) whereClause['taskName'] = { [Op.like]: `%${taskName}%` };
+        if(status) whereClause['status'] = status;
+        if(startDate) whereClause['startDate'] = { [Op.gte]: new Date(startDate as string)};
+        if(endDate) whereClause['endDate'] = {[Op.lte]: new Date(endDate as string) };
+
+        options.where = whereClause;
+
+        try {
+            const tasks = await paginate(Task, options, req);
+            res.status(200).json({ tasks });
+        }catch (error: unknown) {
+            // Check for pagination-related errors
+            if (error instanceof Error && (error.message.includes("does not exist") || error.message.includes("invalid"))) {
+                res.status(404).json({ message: error.message }); // Custom message for invalid page
+            } else {
+                res.status(400).json({ message: (error as Error).message }); // General error for pagination
+            }
+        } 
+
+
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred while fetching tasks.' });
-        return; 
     }
 }

@@ -24,7 +24,7 @@ Team.init({
             model:'users',
             key:'id'
         },
-        allowNull:false
+        allowNull:true
     },
     createdAt:{
         type:DataTypes.DATE,

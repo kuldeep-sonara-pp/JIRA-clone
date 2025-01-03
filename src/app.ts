@@ -14,6 +14,8 @@ import teamRoutes from './routes/team.routes';
 import rolesRoutes from './routes/roles.route';
 import projectRoutes from './routes/project.route';
 import taskRoutes from "./routes/task.route";
+import projectSnapshortRoutes from "./routes/projectSnapshort.route";
+import ProjectSnapshot from "./model/projectSnapshots.model";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -30,6 +32,7 @@ app.use('/team', teamRoutes);
 app.use('/roles', rolesRoutes);
 app.use('/projects', projectRoutes);
 app.use('/tasks', taskRoutes);
+app.use("/snapshots", projectSnapshortRoutes);
 
 const startServer = async () => {
     try {
@@ -57,6 +60,14 @@ const startServer = async () => {
         // User and Task
         User.hasMany(Task, { foreignKey: 'createdBy', as: 'createdTasks' });
         Task.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+        // Project and ProjectSnapshot
+        Project.hasMany(ProjectSnapshot, { foreignKey: 'projectId', as: 'snapshots' });
+        ProjectSnapshot.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
+
+        // User and ProjectSnapshot
+        User.hasMany(ProjectSnapshot, { foreignKey: 'teamMemberId', as: 'snapshots' });
+        ProjectSnapshot.belongsTo(User, { foreignKey: 'teamMemberId', as: 'teamMember' });
 
 
         await sequelize.authenticate();

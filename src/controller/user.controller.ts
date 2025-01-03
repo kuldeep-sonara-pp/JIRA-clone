@@ -1,5 +1,8 @@
 import User from '../model/user.model';
 import Roles from '../model/rols.model';
+import Task from '../model/task.model';
+import ProjectSnapshot from '../model/projectSnapshots.model';
+
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
@@ -7,6 +10,13 @@ import dotenv from "dotenv";
 import { recordExists } from '../util/database';
 import { findFromToken } from '../util/auth.middleware';
 import { chackUserStatus } from '../util/userUtil';
+import Team from '../model/team.model';
+
+import { paginate } from '../util/paginate';
+import { FindOptions } from 'sequelize';
+
+import { Op } from "sequelize"; // Add this import
+
 
 
 dotenv.config();
@@ -73,19 +83,17 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
-
 export const logout = async (req: Request, res: Response): Promise<void> => {
     res.clearCookie('token');
     res.status(200).json({ message: 'Logout successful' });
 };
 
-
 export const createUser = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
-    const { name, email, password, roleId, teamId } = req.body;
+    const { name, email, password, roleId, teamId, status= 'active' } = req.body;
 
     if (!token) {
-        res.status(401).json({ message: 'Token is not found: No token provided.' });
+        res.status(401).json({ message: 'Unauthorized: No token provided.' });
         return; 
     }
     try{
@@ -100,7 +108,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
             return; 
         }
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = await User.create({ name,email, password: hashedPassword, roleId, teamId });
+        const newUser = await User.create({ name,email, password: hashedPassword, roleId, teamId, status });
         res.status(201).json(newUser);
     }
     catch(error){
@@ -111,45 +119,11 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
 };
 
-export const getUserByRole = async (req: Request, res: Response): Promise<void> => {
-    const token = req.cookies.token;
-    if (!token) {
-        res.status(401).json({ message: 'Token is not found' });
-        return; 
-    }
-
-    try {
-        const roleName = req.params.role as string;
-        console.log("roleName", roleName);
-        if (!roleName) {
-            res.status(400).json({ message: 'Bad Request: role are required.' });
-            return; 
-        }
-        const user = await User.findAll({
-            include: [{
-                model: Roles,
-                as: 'role',
-                where: { roleName }
-            }]
-        });
-
-        if (!user) {
-            res.status(404).json({ message: 'User not found' });
-            return; 
-        }
-
-        res.status(200).json({ user });
-        return; 
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-};
 
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        res.status(401).json({ message: 'Token is not found' });
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
     }
 
@@ -183,7 +157,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        res.status(401).json({ message: 'Token is not found' });
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
     }
 
@@ -195,15 +169,25 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
             res.status(403).json({ message: 'Forbidden: You do not have permission to create a user.' });
             return; 
         }
-        const users = await User.findAll({
-            include: [{
+
+
+        const options : FindOptions = {
+            include : [{
                 model: Roles,
                 as: 'role'
             }]
-        });
+        } 
 
-        res.status(200).json({ users });
-        return; 
+        try {
+            const UserPagination = await paginate(User, options, req);
+            res.status(200).json({ UserPagination });
+        } catch (error: unknown) {
+            if (error instanceof Error && (error.message.includes("does not exist") || error.message.includes("invalid"))) {
+                res.status(404).json({ message: error.message }); // Custom message for invalid page
+            } else {
+                res.status(400).json({ message: (error as Error).message }); // General error for pagination
+            }
+        } 
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
@@ -213,7 +197,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        res.status(401).json({ message: 'Token is not found' });
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
     }
 
@@ -263,7 +247,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        res.status(401).json({ message: 'Token is not found' });
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
     }
 
@@ -302,7 +286,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 export const chnageStataus = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
     if (!token) {
-        res.status(401).json({ message: 'Token is not found' });
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
     }
 
@@ -322,11 +306,18 @@ export const chnageStataus = async (req: Request, res: Response): Promise<void> 
 
         const userActive = await chackUserStatus(user.id);
         if (userActive) {
+
+            await Task.update({ assignedTo: null }, { where: { assignedTo:userId } });
+
+            await Team.update({ teamLeadId: null }, { where: { teamLeadId: userId } });
+
+            await ProjectSnapshot.update({status: 'inactive'}, {where: {teamMemberId: userId}});
+
             await User.update({ status: 'inactive' }, { where: { id: userId } });
             res.status(200).json({ message: 'User inactivated successfully' });
             return; 
         }
-
+        await ProjectSnapshot.update({status: 'active'}, {where: {teamMemberId: userId}});
         await User.update({ status: 'active' }, { where: { id: userId } });
         res.status(200).json({ message: 'User activated successfully' });
         return; 
@@ -337,13 +328,12 @@ export const chnageStataus = async (req: Request, res: Response): Promise<void> 
     }
 }
 
-export const getUserByState = async (req: Request, res: Response): Promise<void> => {
-    console.log('==================== Request Received ====================');
+
+export const getUserByFilter = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
-    console.log("Query parameters:", req.query);
 
     if (!token) {
-        res.status(401).json({ message: 'Token is not found' });
+        res.status(401).json({ message: 'Unauthorized' });
         return; 
     }
 
@@ -354,15 +344,47 @@ export const getUserByState = async (req: Request, res: Response): Promise<void>
             return; 
         }
 
-        const state = req.query.state;
-        if (!state) {
-            res.status(400).json({ message: 'Bad Request: State is required.' });
-            return; 
+        const { name, email, roleId, teamId, status } = req.query;
+
+        // Create the options object for the query with a properly defined where clause
+        const options: FindOptions = {
+            where: {} 
+        };
+
+        const whereClause: FindOptions['where'] = {};
+
+        // Use LIKE for partial matching with name and email
+        if (typeof name === 'string') {
+            whereClause.name = { [Op.like]: `%${name}%` }; // Use LIKE for partial matching in name
+        }
+        if (typeof email === 'string') {
+            whereClause.email = { [Op.like]: `%${email}%` }; // Use LIKE for partial matching in email
+        }
+        if (typeof roleId === 'string') {
+            whereClause.roleId = roleId; 
+        }
+        if (typeof teamId === 'string') {
+            whereClause.teamId = teamId;
+        }
+        if (typeof status === 'string') {
+            whereClause.status = status;
         }
 
-        console.log("Fetching users with status:", state);
-        const users = await User.findAll({ where: { status: state } });
-        res.status(200).json({ users });
+        options.where = whereClause; // Assign the constructed where clause to the options
+
+        // Handle pagination and filtering
+        try {
+            const usersFilterPagination = await paginate(User, options, req);
+            res.status(200).json({ usersFilterPagination });
+        } catch (error: unknown) {
+            // Check for pagination-related errors
+            if (error instanceof Error && (error.message.includes("does not exist") || error.message.includes("invalid"))) {
+                res.status(404).json({ message: error.message }); // Custom message for invalid page
+            } else {
+                res.status(400).json({ message: (error as Error).message }); // General error for pagination
+            }
+        } 
+
     } catch (error) {
         console.error('Error fetching users:', error);
         res.status(500).json({ message: 'Internal server error' });

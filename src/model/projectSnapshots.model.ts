@@ -1,13 +1,14 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from '../util/database'; 
 
-class ProjectSnapshot  extends  Model  {
-    public id!: number; 
-    public projectId!: number; 
+class ProjectSnapshot extends Model {
+    public id!: number;
+    public projectId!: number;
     public teamMemberId!: number;
     public role!: string;
     public status!: 'active' | 'inactive';
     public completedAt!: Date;
+    public finalizedByUserId!: number; // New column to store the user ID who finalized
 }
 
 ProjectSnapshot.init({
@@ -43,9 +44,21 @@ ProjectSnapshot.init({
     completedAt: {
         type: DataTypes.DATE,
         allowNull: false,
+    },
+    finalizedByUserId: {
+        type: DataTypes.INTEGER,
+        references: {
+            model: 'users',
+            key: 'id',
+        },
+        allowNull: false,
     }
-},{
+}, {
     sequelize,
     tableName: 'project_snapshots',
-    underscored: true
+    underscored: true,
+    timestamps: false,
 });
+
+
+export default ProjectSnapshot;

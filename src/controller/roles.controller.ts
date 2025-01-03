@@ -9,7 +9,7 @@ export const createRole = async (req: Request, res: Response) : Promise<void> =>
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
         const exists = await recordExists(Roles, { role_name: roleName }); // Adjust the criteria if necessary
@@ -34,7 +34,7 @@ export const getRoles = async (req: Request, res: Response): Promise<void> => {
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
         const roles = await Roles.findAll();
@@ -55,7 +55,7 @@ export const updateRole = async (req: Request, res: Response): Promise<void> => 
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
         const exists = await recordExists(Roles, { id });
@@ -87,7 +87,7 @@ export const deleteRole = async (req: Request, res: Response) : Promise<void> =>
     try {
         const decodedToken = findFromToken(token);
         if(decodedToken.roleName !== 'admin'){
-            res.status(401).json({ message: 'Token is not found' });
+            res.status(401).json({ message: 'Unauthorized' });
             return; 
         }
         const exists = await recordExists(Roles, { id });
@@ -106,3 +106,4 @@ export const deleteRole = async (req: Request, res: Response) : Promise<void> =>
         return; 
     }
 }
+
