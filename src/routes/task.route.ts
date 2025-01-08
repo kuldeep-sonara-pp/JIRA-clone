@@ -1,24 +1,24 @@
 import { Router } from "express";
-import checkToken from "../util/auth.middleware";
+import verifyAuthToken from "../util/auth.middleware";
 import { createTask, deleteTask, getAllTasks, getTaskByFilter, getTaskById, updateAssignedToTaskAndStaus, updateTask } from "../controller/task.controller";
 
 const routes = Router();
 
 
-routes.get("/", checkToken ,getAllTasks);
+routes.get("/", verifyAuthToken ,getAllTasks);
 
-routes.post("/create", checkToken ,createTask);
+routes.post("/create", verifyAuthToken ,createTask);
 
-routes.get("/filter", checkToken ,getTaskByFilter);
+routes.get("/filter", verifyAuthToken ,getTaskByFilter);
 
 
-routes.get("/:taskId", checkToken ,getTaskById);
+routes.get("/:taskId", verifyAuthToken ,getTaskById);
 
-routes.put("/update/:taskId", checkToken ,updateTask);
+routes.put("/update/:taskId", verifyAuthToken ,updateTask);
 
-routes.put("/assigned/:taskId", checkToken ,updateAssignedToTaskAndStaus);
+routes.put("/assigned/:taskId", verifyAuthToken ,updateAssignedToTaskAndStaus);
 
-routes.delete("/delete/:taskId", checkToken ,deleteTask);
+routes.delete("/delete/:taskId", verifyAuthToken ,deleteTask);
 
 
 

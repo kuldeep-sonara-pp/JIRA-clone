@@ -1,12 +1,12 @@
 import { Router } from "express";
-import checkToken from "../util/auth.middleware";
+import verifyAuthToken from "../util/auth.middleware";
 import { getProjectSnapshots, getSnapshotsByFilter } from "../controller/projectSnapshorts.controller";
 
 const router = Router();
 
-router.get("/", checkToken, getProjectSnapshots);
+router.get("/", verifyAuthToken, getProjectSnapshots);
 
-router.get("/filter", checkToken, getSnapshotsByFilter);
+router.get("/filter", verifyAuthToken, getSnapshotsByFilter);
 
 const projectSnapshortRoutes = router;
 export default projectSnapshortRoutes;

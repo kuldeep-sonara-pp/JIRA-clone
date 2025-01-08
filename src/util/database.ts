@@ -5,9 +5,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const sequelize = new Sequelize(
-    process.env.DB_NAME as string,        // Assert type as string
-    process.env.DB_USER as string,       // Assert type as string
-    process.env.DB_PASSWORD as string,    // Assert type as string
+    process.env.DB_NAME as string,        
+    process.env.DB_USER as string,       
+    process.env.DB_PASSWORD as string,    
     {
         host: process.env.DB_HOST || "localhost",
         dialect: "postgres",
@@ -15,7 +15,7 @@ const sequelize = new Sequelize(
     }
 );
 
-// Test the connection
+
 const testConnection = async () => {
     try {
         await sequelize.authenticate();
@@ -30,7 +30,7 @@ testConnection();
 
 export const recordExists = async (model: ModelStatic<Model>, criteria: WhereOptions) => {
     const existingRecord = await model.findOne({ where: criteria });
-    return existingRecord !== null; // Returns true if exists, false otherwise
+    return existingRecord !== null; 
 };
 
 export default sequelize;

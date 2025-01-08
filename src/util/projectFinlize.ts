@@ -11,14 +11,12 @@ export const finalizeProjectHandler = async (projectId: number, userId: number):
             return { message: 'Project does not exist', statusCode: 404 }; // Not found
         }
 
-        // Create a snapshot for the project
         await createProjectSnapshot(projectId, userId);
 
         const currentDate = new Date();
         const oneWeekEarlier = new Date(currentDate);
         oneWeekEarlier.setDate(currentDate.getDate() - 7);
 
-        // Update tasks related to the project
         await Task.update(
             {
                 status: 'completed',

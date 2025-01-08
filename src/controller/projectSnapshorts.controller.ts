@@ -8,31 +8,27 @@ import { paginate } from "../util/paginate";
 
 export const createProjectSnapshot = async (projectID: number, finalizedByUserId: number): Promise<void> => {
     try {
-        // Fetch the project to ensure it exists
         const project = await Project.findByPk(projectID);
         if (!project) {
             throw new Error(`Project with ID ${projectID} not found`);
         }
 
-        // Fetch team members associated with the project
         const teamMembers = await User.findAll({
             where: { teamId: project.teamId },
             attributes: ['id', 'roleId', 'status'],
         });
 
-        // Map team members to the project snapshot data
         const projectSnapshotData = teamMembers.map((member) => ({
             projectId: projectID,
             teamMemberId: member.id,
             role: member.roleId ? member.roleId.toString() : 'No Role',
             status: member.status,
-            completedAt: new Date(), // Use current date for completedAt
+            completedAt: new Date(),
             finalizedByUserId,
         }));
 
-        console.log('ProjectSnapshot Model:', ProjectSnapshot); // Debugging line
+        console.log('ProjectSnapshot Model:', ProjectSnapshot);
 
-        // Check if projectSnapshotData is not empty before bulkCreate
         if (projectSnapshotData.length > 0) {
             await ProjectSnapshot.bulkCreate(projectSnapshotData);
             console.log(`Snapshot created successfully for project ID: ${projectID} by user ID: ${finalizedByUserId}`);

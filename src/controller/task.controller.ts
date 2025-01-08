@@ -158,7 +158,7 @@ export const updateAssignedToTaskAndStaus = async (req: Request, res: Response):
         res.status(500).json({ message: 'An error occurred while assigning user to task.' });
         return; 
     }
-}
+};
 
 export const getTaskById = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -204,7 +204,7 @@ export const getTaskById = async (req: Request, res: Response): Promise<void> =>
         res.status(500).json({ message: 'An error occurred while fetching task.' });
         return; 
     }
-}
+};
 
 export const getAllTasks = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -247,7 +247,7 @@ export const getAllTasks = async (req: Request, res: Response): Promise<void> =>
         res.status(500).json({ message: 'An error occurred while fetching tasks.' });
         return; 
     }
-}
+};
 
 export const updateTask = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -284,7 +284,7 @@ export const updateTask = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({ message: 'An error occurred while updating task.' });
         return; 
     }
-}
+};
 
 export const deleteTask = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -316,7 +316,7 @@ export const deleteTask = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({ message: 'An error occurred while deleting task.' });
         return; 
     }
-}
+};
 
 export const getTaskByFilter = async (req: Request, res: Response): Promise<void> => {
     const token = req.cookies.token;
@@ -368,4 +368,4 @@ export const getTaskByFilter = async (req: Request, res: Response): Promise<void
         console.error(error);
         res.status(500).json({ message: 'An error occurred while fetching tasks.' });
     }
-}
+};

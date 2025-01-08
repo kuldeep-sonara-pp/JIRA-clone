@@ -1,25 +1,25 @@
 import { Router } from "express";
 import { createProject, deleteProject, finalizeProject, getProjectById, getProjects, getProjectsByFilter, reopenProject, updateProject } from "../controller/project.controller";
-import checkToken from "../util/auth.middleware";
+import verifyAuthToken from "../util/auth.middleware";
 
 const router = Router();
 
 
-router.post("/create", checkToken ,createProject);
+router.post("/create", verifyAuthToken ,createProject);
 
-router.get("/", checkToken ,getProjects);
+router.get("/", verifyAuthToken ,getProjects);
 
-router.get("/filter", checkToken, getProjectsByFilter);
+router.get("/filter", verifyAuthToken, getProjectsByFilter);
 
-router.get("/:projectId", checkToken ,getProjectById);
+router.get("/:projectId", verifyAuthToken ,getProjectById);
 
-router.put("/update/:projectId", checkToken ,updateProject);
+router.put("/update/:projectId", verifyAuthToken ,updateProject);
 
-router.put("/finalize/:projectId", checkToken ,finalizeProject);
+router.put("/finalize/:projectId", verifyAuthToken ,finalizeProject);
 
-router.delete("/delete/:projectId", checkToken , deleteProject);
+router.delete("/delete/:projectId", verifyAuthToken , deleteProject);
 
-router.put("/reopen/:projectId", checkToken , reopenProject);
+router.put("/reopen/:projectId", verifyAuthToken , reopenProject);
 
 const projectRoutes = router;
 export default projectRoutes;

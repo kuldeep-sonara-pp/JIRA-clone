@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const checkToken = (req: Request, res: Response, next: NextFunction) => {
+const verifyAuthToken = (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies.token; 
 
     if (!token) {
@@ -34,9 +34,9 @@ const checkToken = (req: Request, res: Response, next: NextFunction) => {
 
 
 interface TokenPayload {
-    userId: number; // Adjust as necessary
+    userId: number; 
     roleName: string;
-    teamId?: number; // Optional if not always provided
+    teamId?: number;
 }
 
 export const findFromToken = (token: string) => {
@@ -50,4 +50,4 @@ export const findFromToken = (token: string) => {
 };
 
 
-export default checkToken;
+export default verifyAuthToken;

@@ -16,6 +16,7 @@ import projectRoutes from './routes/project.route';
 import taskRoutes from "./routes/task.route";
 import projectSnapshortRoutes from "./routes/projectSnapshort.route";
 import ProjectSnapshot from "./model/projectSnapshots.model";
+import globalRouts from "./routes/globalSearch.routs";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -33,6 +34,7 @@ app.use('/roles', rolesRoutes);
 app.use('/projects', projectRoutes);
 app.use('/tasks', taskRoutes);
 app.use("/snapshots", projectSnapshortRoutes);
+app.use('/global',globalRouts);
 
 const startServer = async () => {
     try {
@@ -70,7 +72,7 @@ const startServer = async () => {
         ProjectSnapshot.belongsTo(User, { foreignKey: 'teamMemberId', as: 'teamMember' });
 
 
-        await sequelize.authenticate();
+        await sequelize.authenticate({logging : true});
     
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
@@ -81,5 +83,5 @@ const startServer = async () => {
 };
 
 
-// Start the server
+
 startServer();

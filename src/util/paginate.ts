@@ -18,7 +18,9 @@ export const paginate = async <T extends Model>(
     order: [['id', 'Asc']]
   });
 
+  console.log(data);
   const totalPages = Math.ceil(totalCount / limit);
+  console.log(`modal is : ${model} total page is : ${totalPages}`);
 
   // Check for invalid page numbers
   if (page < 1) {
@@ -34,10 +36,33 @@ export const paginate = async <T extends Model>(
   }
 
   return {
-    currentPage: page,
-    totalPages,
-    hasPrevious: page > 1,
-    hasNext: page < totalPages,
+    totalCount,
+    data,
+  };
+};
+
+export const globalPaginate = async <T extends Model>(
+  model: ModelStatic<T>, 
+  options: FindOptions,
+  req: Request
+) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+
+  const offset = (page - 1) * limit;
+
+  const { count: totalCount, rows: data } = await model.findAndCountAll({
+    ...options,
+    offset,
+    limit,
+    order: [['id', 'Asc']]
+  });
+
+  console.log(data);
+  const totalPages = Math.ceil(totalCount / limit);
+  console.log(`modal is : ${model} total page is : ${totalPages}`);
+
+  return {
     totalCount,
     data,
   };

@@ -320,7 +320,6 @@ export const getProjectsByFilter = async (req: Request, res: Response): Promise<
         if (endDate && typeof endDate === 'string') whereClause['endDate'] = { [Op.lte]: new Date(endDate) };
         if (projectName) whereClause['projectName'] = { [Op.like]: `%${projectName}%` };
 
-        // Filter for active projects
         if (activeProject) {
             console.log('Active Project Filter Applied');
             

@@ -51,6 +51,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        if(user.status === 'inactive'){
+            res.status(401).json({ message: 'not autorize to login' });
+            return;
+        }
+
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
             res.status(401).json({ message: 'Invalid credentials' });
